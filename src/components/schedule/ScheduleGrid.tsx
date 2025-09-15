@@ -4,6 +4,9 @@ import { ChevronLeft, ChevronRight, Download, Upload, Calendar, Users } from 'lu
 import { Button } from '@/components/ui/button';
 import { ScheduleCell } from './ScheduleCell';
 import { ScheduleToolbar } from './ScheduleToolbar';
+import { ImportModal } from '../modals/ImportModal';
+import { ExportModal, ExportOptions } from '../modals/ExportModal';
+import { useNavigate } from 'react-router-dom';
 
 // Mock data structure matching the blueprint
 interface Employee {
@@ -45,6 +48,7 @@ const MOCK_EMPLOYEES: Employee[] = [
 const DAY_NAMES = ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
 export const ScheduleGrid = () => {
+  const navigate = useNavigate();
   const [currentWeekStart, setCurrentWeekStart] = useState<Date>(() => {
     const now = new Date();
     // Get Saturday of current week
@@ -54,6 +58,8 @@ export const ScheduleGrid = () => {
   const [shifts, setShifts] = useState<Record<string, string>>({});
   const [editingCell, setEditingCell] = useState<string | null>(null);
   const [employees] = useState<Employee[]>(MOCK_EMPLOYEES);
+  const [importModalOpen, setImportModalOpen] = useState(false);
+  const [exportModalOpen, setExportModalOpen] = useState(false);
 
   // Generate week dates (Saturday to Friday)
   const weekDates = Array.from({ length: 7 }, (_, i) => 
@@ -85,6 +91,81 @@ export const ScheduleGrid = () => {
   const goToCurrentWeek = () => {
     const now = new Date();
     setCurrentWeekStart(startOfWeek(now, { weekStartsOn: 6 }));
+  };
+
+  // Action handlers
+  const handleNewWeek = () => {
+    const nextWeek = addDays(currentWeekStart, 7);
+    setCurrentWeekStart(nextWeek);
+    // Optionally clone previous week's data
+    console.log('Created new week starting:', format(nextWeek, 'yyyy-MM-dd'));
+  };
+
+  const handleExport = () => {
+    setExportModalOpen(true);
+  };
+
+  const handleImport = () => {
+    setImportModalOpen(true);
+  };
+
+  const handleImportData = (data: string[][]) => {
+    // Process imported CSV data
+    const newShifts = { ...shifts };
+    
+    // Skip header row and process each employee row
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      const employeeName = row[0];
+      
+      // Find employee in our roster
+      const employee = employees.find(emp => emp.name === employeeName);
+      if (employee) {
+        // Update shifts for each day (columns 1-7)
+        for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
+          const cellKey = getShiftKey(employee.employee_id, dayIndex);
+          newShifts[cellKey] = row[dayIndex + 1] || '';
+        }
+      }
+    }
+    
+    setShifts(newShifts);
+    setImportModalOpen(false);
+  };
+
+  const handleExportData = (options: ExportOptions) => {
+    // Generate CSV data
+    const headers = ['Name', ...DAY_NAMES.map((day, index) => {
+      const date = addDays(currentWeekStart, index);
+      return `${day} ${format(date, 'MM/dd')}`;
+    })];
+
+    const rows = employees.map(employee => {
+      const row = [employee.name];
+      for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
+        const cellKey = getShiftKey(employee.employee_id, dayIndex);
+        row.push(shifts[cellKey] || '');
+      }
+      return row;
+    });
+
+    // Create CSV content
+    const csvContent = [headers, ...rows]
+      .map(row => row.map(cell => `"${cell}"`).join(','))
+      .join('\n');
+
+    // Download file
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `schedule-${format(currentWeekStart, 'yyyy-MM-dd')}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+    
+    setExportModalOpen(false);
   };
 
   // Keyboard navigation handler
@@ -133,9 +214,12 @@ export const ScheduleGrid = () => {
         onPreviousWeek={goToPreviousWeek}
         onNextWeek={goToNextWeek}
         onCurrentWeek={goToCurrentWeek}
-        onExport={() => console.log('Export CSV')}
-        onImport={() => console.log('Import CSV')}
-        onNewWeek={() => console.log('New Week')}
+        onExport={handleExport}
+        onImport={handleImport}
+        onNewWeek={handleNewWeek}
+        onHistory={() => navigate('/history')}
+        onSettings={() => navigate('/settings')}
+        onProfile={() => navigate('/profile')}
       />
 
       {/* Main Schedule Grid */}
@@ -218,6 +302,18 @@ export const ScheduleGrid = () => {
           </p>
         </div>
       </div>
+
+      <ImportModal 
+        open={importModalOpen}
+        onOpenChange={setImportModalOpen}
+        onImport={handleImportData}
+      />
+
+      <ExportModal 
+        open={exportModalOpen}
+        onOpenChange={setExportModalOpen}
+        onExport={handleExportData}
+      />
     </div>
   );
 };

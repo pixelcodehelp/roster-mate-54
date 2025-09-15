@@ -21,6 +21,9 @@ interface ScheduleToolbarProps {
   onExport: () => void;
   onImport: () => void;
   onNewWeek: () => void;
+  onHistory: () => void;
+  onSettings: () => void;
+  onProfile: () => void;
 }
 
 export const ScheduleToolbar: React.FC<ScheduleToolbarProps> = ({
@@ -31,6 +34,9 @@ export const ScheduleToolbar: React.FC<ScheduleToolbarProps> = ({
   onExport,
   onImport,
   onNewWeek,
+  onHistory,
+  onSettings,
+  onProfile,
 }) => {
   // Calculate week end (Friday)
   const weekEnd = new Date(currentWeekStart);
@@ -119,7 +125,7 @@ export const ScheduleToolbar: React.FC<ScheduleToolbarProps> = ({
             <Button 
               variant="ghost" 
               size="sm"
-              onClick={() => console.log('History')}
+              onClick={onHistory}
               className="h-9"
             >
               <History className="w-4 h-4" />
@@ -128,16 +134,17 @@ export const ScheduleToolbar: React.FC<ScheduleToolbarProps> = ({
             <Button 
               variant="ghost" 
               size="sm"
-              onClick={() => console.log('Settings')}
+              onClick={onSettings}
               className="h-9"
             >
               <Settings className="w-4 h-4" />
             </Button>
 
-            {/* User menu placeholder */}
+            {/* User menu */}
             <Button 
               variant="ghost" 
               size="sm"
+              onClick={onProfile}
               className="h-9 w-9 p-0 rounded-full"
             >
               <div className="w-7 h-7 bg-primary/10 rounded-full flex items-center justify-center">
